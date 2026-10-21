@@ -311,11 +311,13 @@ SMTP_PORT=587
 SMTP_USERNAME=bea186001@smtp-brevo.com
 SMTP_PASSWORD=YOUR_BREVO_SMTP_MASTER_KEY
 
-# IMAP Settings (Inbound Reply Detection)
-IMAP_HOST=imap-relay.brevo.com
+# IMAP Settings (Inbound Reply Detection - Optional)
+# If using Hostinger Business Email to receive replies:
+IMAP_HOST=imap.hostinger.com
 IMAP_PORT=993
-IMAP_USERNAME=
-IMAP_PASSWORD=
+IMAP_USERNAME=info@obrive.com
+IMAP_PASSWORD=YOUR_HOSTINGER_EMAIL_PASSWORD
+# (Note: If IMAP is blank, reply checking is safely skipped and outbound sending continues normally)
 
 # Free AI Cloud Brains
 OPENROUTER_API_KEY=YOUR_OPENROUTER_API_KEY

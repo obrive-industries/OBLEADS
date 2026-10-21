@@ -23,7 +23,7 @@
                      ├── Heartbeat Background Runner (15m interval)
                      ├── SQLite WAL Database (data/harvey.db)
                      ├── Brevo SMTP Relay (Transactional Sending)
-                     └── OpenRouter / Cloud AI (Nemotron 120B / Gemini)
+                     └── OpenRouter / Cloud AI (Poolside Laguna / Gemini)
 ```
 
 ---
@@ -83,11 +83,13 @@ SMTP_PORT=587
 SMTP_USERNAME=bea186001@smtp-brevo.com
 SMTP_PASSWORD=YOUR_BREVO_SMTP_KEY
 
-# IMAP Settings (Inbound Reply Detection)
-IMAP_HOST=imap-relay.brevo.com
+# IMAP Settings (Inbound Reply Detection - Optional)
+# If using Hostinger Business Email to receive replies:
+IMAP_HOST=imap.hostinger.com
 IMAP_PORT=993
-IMAP_USERNAME=
-IMAP_PASSWORD=
+IMAP_USERNAME=info@obrive.com
+IMAP_PASSWORD=YOUR_HOSTINGER_EMAIL_PASSWORD
+# (Note: If IMAP is blank, reply checking is safely skipped and outbound sending continues normally)
 
 # AI Cloud Brain (Free Cloud API)
 OPENROUTER_API_KEY=YOUR_OPENROUTER_API_KEY
@@ -238,5 +240,5 @@ Certbot will automatically configure HTTPS, HTTP-to-HTTPS redirect, and automati
 | **Check Dashboard Logs** | `journalctl -u harvey-dashboard -f` |
 | **Check AI Heartbeat Logs** | `journalctl -u harvey-runner -f` |
 | **Restart Leads Engine** | `sudo systemctl restart harvey-dashboard harvey-runner` |
-| **View Harvey DB records** | `cd /var/www/leads && .venv/bin/harvey outbox list` |
+| **View Pipeline Status** | `cd /var/www/leads && .venv/bin/harvey status` |
 | **Update Code from Git** | `cd /var/www/leads && git pull && sudo systemctl restart harvey-dashboard harvey-runner` |
