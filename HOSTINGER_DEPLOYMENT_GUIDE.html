@@ -128,9 +128,11 @@
     padding: 10px 14px;
     border-radius: 6px;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-    font-size: 12px;
+    font-size: 11.5px;
     line-height: 1.45;
-    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow: hidden;
     margin: 8px 0 12px 0;
     page-break-inside: avoid;
     border-left: 3px solid #6366f1;
@@ -298,8 +300,6 @@ cd /var/www/leads</code></pre>
 source .venv/bin/activate
 pip install --upgrade pip
 pip install -e .</code></pre>
-
-<div class="page-break"></div>
 
 <h1>4. Environment Secrets Configuration</h1>
 <p>Create the production <code>.env</code> file at <code>/var/www/leads/.env</code>:</p>
