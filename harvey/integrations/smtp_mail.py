@@ -44,13 +44,16 @@ class SmtpImapProvider(MailProvider):
         self.smtp_port = int(getattr(env, "smtp_port", 587) or 587)
         self.smtp_user = getattr(env, "smtp_username", "")
         self.smtp_pass = getattr(env, "smtp_password", "")
-        self.imap_host = getattr(env, "imap_host", "") or self.smtp_host
+        self.imap_host = getattr(env, "imap_host", "")
         self.imap_port = int(getattr(env, "imap_port", 993) or 993)
-        self.imap_user = getattr(env, "imap_username", "") or self.smtp_user
-        self.imap_pass = getattr(env, "imap_password", "") or self.smtp_pass
+        self.imap_user = getattr(env, "imap_username", "")
+        self.imap_pass = getattr(env, "imap_password", "")
 
     def is_configured(self) -> bool:
         return bool(self.smtp_host and self.smtp_user and self.smtp_pass)
+
+    def is_imap_configured(self) -> bool:
+        return bool(self.imap_host and self.imap_user and self.imap_pass)
 
     async def send_email(
         self,
@@ -147,27 +150,34 @@ class SmtpImapProvider(MailProvider):
             return []
 
     def _fetch_unseen(self, limit: int) -> list[InboundMessage]:
+        if not self.is_imap_configured():
+            logger.debug("IMAP not configured. Skipping reply check.")
+            return []
         out: list[InboundMessage] = []
-        conn = imaplib.IMAP4_SSL(self.imap_host, self.imap_port)
         try:
-            conn.login(self.imap_user, self.imap_pass)
-            conn.select("INBOX")
-            status, data = conn.search(None, "UNSEEN")
-            if status != "OK":
-                return []
-            ids = data[0].split()[-limit:]
-            for msg_id in ids:
-                status, parts = conn.fetch(msg_id, "(RFC822)")
-                if status != "OK" or not parts or not isinstance(parts[0], tuple):
-                    continue
-                parsed = self._parse_rfc822(parts[0][1])
-                if parsed:
-                    out.append(parsed)
-        finally:
+            conn = imaplib.IMAP4_SSL(self.imap_host, self.imap_port, timeout=10)
             try:
-                conn.logout()
-            except Exception:
-                pass
+                conn.login(self.imap_user, self.imap_pass)
+                conn.select("INBOX")
+                status, data = conn.search(None, "UNSEEN")
+                if status != "OK":
+                    return []
+                ids = data[0].split()[-limit:]
+                for msg_id in ids:
+                    status, parts = conn.fetch(msg_id, "(RFC822)")
+                    if status != "OK" or not parts or not isinstance(parts[0], tuple):
+                        continue
+                    parsed = self._parse_rfc822(parts[0][1])
+                    if parsed:
+                        out.append(parsed)
+            finally:
+                try:
+                    conn.logout()
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.warning(f"IMAP fetch error: {e}")
+            return []
         return out
 
     @staticmethod
@@ -220,11 +230,15 @@ class SmtpImapProvider(MailProvider):
             await smtp.quit()
         except Exception as e:
             return False, f"SMTP login failed: {str(e)[:200]}"
+        # If IMAP is not configured, SMTP alone is completely fine for outbound sending!
+        if not self.is_imap_configured():
+            return True, f"SMTP relay connected as {self.smtp_user} (IMAP not configured; outbound sending active)"
+
         # IMAP handshake
         loop = asyncio.get_event_loop()
 
         def _imap_check():
-            conn = imaplib.IMAP4_SSL(self.imap_host, self.imap_port)
+            conn = imaplib.IMAP4_SSL(self.imap_host, self.imap_port, timeout=10)
             try:
                 conn.login(self.imap_user, self.imap_pass)
             finally:

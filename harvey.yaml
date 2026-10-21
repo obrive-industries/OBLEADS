@@ -92,7 +92,7 @@ channels:
 
 brain:
   provider: "openrouter"
-  model: "nvidia/nemotron-3-super-120b-a12b:free"
+  model: "poolside/laguna-s-2.1:free"
 
 usage:
   max_daily_claude_percent: 80

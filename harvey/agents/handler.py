@@ -374,11 +374,15 @@ class Handler:
             )
             return True  # nothing to read; the sender can't send through it either
 
+        if hasattr(self.provider, "is_imap_configured") and not self.provider.is_imap_configured():
+            logger.debug("Handler: IMAP not configured; skipping inbound reply check.")
+            return True
+
         try:
             inbound = await self.provider.get_replies()
         except Exception as e:
-            logger.error(f"Handler: fetching replies failed: {e}")
-            return False
+            logger.warning(f"Handler: fetching replies failed: {e}")
+            return True
 
         handled = 0
         complete = True

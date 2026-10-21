@@ -417,6 +417,10 @@ def load_env() -> EnvConfig:
         imap_password=os.getenv("IMAP_PASSWORD", "").strip(),
         m365_client_id=os.getenv("M365_CLIENT_ID", "").strip(),
         m365_tenant_id=os.getenv("M365_TENANT_ID", "").strip(),
+        gemini_api_key=os.getenv("GEMINI_API_KEY", "").strip(),
+        groq_api_key=os.getenv("GROQ_API_KEY", "").strip(),
+        openrouter_api_key=os.getenv("OPENROUTER_API_KEY", "").strip(),
+        openai_api_key=os.getenv("OPENAI_API_KEY", "").strip(),
         precleared_api_key=os.getenv("PRECLEARED_API_KEY", "").strip(),
     )
     return env
