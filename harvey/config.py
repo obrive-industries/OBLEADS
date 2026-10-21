@@ -31,6 +31,11 @@ class PersonaConfig(BaseModel):
     email: str
     linkedin: str
     tone: str
+    phone_personal: str = "+91 988-6944-447"
+    phone_office: str = "+91 888-4774-300"
+    address: str = "SREE GURURAYA MANSION, 3rd Floor, No 759, 8th Main Road, KSRTC Layout, 3rd Phase, JP Nagar, Bengaluru, Karnataka – 560078"
+    websites: str = "www.obrive.com / www.obrive.in"
+    brands: str = "www.obnov.in / www.obzor.in"
 
 
 class OfferConfig(BaseModel):
@@ -205,7 +210,7 @@ class UsageConfig(BaseModel):
         return v
 
 
-BRAIN_PROVIDERS = ("claude", "codex")
+BRAIN_PROVIDERS = ("claude", "codex", "gemini", "groq", "openrouter", "openai")
 CODEX_REASONING_EFFORTS = ("minimal", "low", "medium", "high", "xhigh")
 
 # Model names are passed to a CLI, so they must look like a model name and
@@ -293,6 +298,11 @@ class EnvConfig(BaseModel):
     # Microsoft 365 (channels.email.provider: microsoft)
     m365_client_id: str = ""
     m365_tenant_id: str = ""
+    # Cloud AI Providers (brain.provider: gemini | groq | openrouter | openai)
+    gemini_api_key: str = ""
+    groq_api_key: str = ""
+    openrouter_api_key: str = ""
+    openai_api_key: str = ""
     # Optional: only used when compliance.precleared.enabled is true.
     precleared_api_key: str = ""
 

@@ -108,8 +108,14 @@ function badge(status) {
 function formatDate(d) {
   if (!d) return '';
   try {
-    const dt = new Date(d);
-    if (isNaN(dt)) return escHtml(d);
+    let s = String(d).trim();
+    if (s.includes('T') && !s.endsWith('Z') && !s.includes('+') && !/[-+]\d\d:\d\d$/.test(s)) {
+      s += 'Z';
+    } else if (/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}/.test(s)) {
+      s = s.replace(' ', 'T') + 'Z';
+    }
+    const dt = new Date(s);
+    if (isNaN(dt.getTime())) return escHtml(d);
     return dt.toLocaleString('en-US', {month:'short',day:'numeric',hour:'numeric',minute:'2-digit'});
   } catch { return escHtml(d); }
 }
@@ -128,10 +134,12 @@ function offlineState() {
 async function api(path, opts) {
   try {
     const r = await fetch(path, opts);
-    if (!r.ok) return null;
-    return await r.json();
-  } catch {
-    return null;
+    let body = null;
+    try { body = await r.json(); } catch {}
+    if (!r.ok) return body || { success: false, message: 'Server error (' + r.status + ')' };
+    return body;
+  } catch (e) {
+    return { success: false, message: String(e) };
   }
 }
 
@@ -1048,6 +1056,7 @@ async function loadOutbox() {
   if (!data) { desk.innerHTML = offlineState(); list.innerHTML = ''; return; }
 
   const pending = data.pending || [];
+  const approved = data.approved || [];
   _desk.items = pending;
   if (_desk.i >= pending.length) _desk.i = Math.max(0, pending.length - 1);
   navCount('nav-outbox', pending.length);
@@ -1056,6 +1065,9 @@ async function loadOutbox() {
     (pending.length && !data.paused
       ? '<button class="btn btn-primary btn-sm" onclick="outboxApproveAll()">Approve all ' +
         pending.length + '</button>' : '') +
+    (approved.length && !data.paused
+      ? '<button class="btn btn-primary btn-sm" style="background:#16a34a;border-color:#16a34a;color:#fff;" onclick="outboxSendNow()">⚡ Send Approved Now (' +
+        approved.length + ')</button>' : '') +
     (data.paused
       ? '<button class="btn btn-secondary btn-sm" onclick="sendingToggle(\'resume\')">' +
         'Resume sending</button>'
@@ -1079,10 +1091,19 @@ async function loadOutbox() {
   const table = (title, rows, cols) => {
     if (!rows || !rows.length) return '';
     let h = '<div class="card"><h2>' + title + '</h2><div class="table-card"><table><thead><tr>' +
-      cols.map(c => '<th>' + c[0] + '</th>').join('') + '</tr></thead><tbody>';
-    for (const r of rows) {
-      h += '<tr>' + cols.map(c => '<td' + (c[2] ? ' class="muted"' : '') + '>' +
-        (c[3] ? c[1](r) : escHtml(String(c[1](r) ?? ''))) + '</td>').join('') + '</tr>';
+      cols.map(c => '<th>' + c[0] + '</th>').join('') + '<th style="text-align:right;">Content</th></tr></thead><tbody>';
+    for (let idx = 0; idx < rows.length; idx++) {
+      const r = rows[idx];
+      const rowId = 'row-' + (r.id || idx);
+      h += '<tr style="cursor:pointer;" onclick="toggleRowDetail(\'' + rowId + '\')">' +
+        cols.map(c => '<td' + (c[2] ? ' class="muted"' : '') + '>' +
+        (c[3] ? c[1](r) : escHtml(String(c[1](r) ?? ''))) + '</td>').join('') +
+        '<td style="text-align:right;"><button class="btn btn-secondary btn-sm" onclick="event.stopPropagation(); toggleRowDetail(\'' + rowId + '\')">View Email</button></td></tr>';
+      h += '<tr id="' + rowId + '" style="display:none;background:var(--bg-2, #18181b);">' +
+        '<td colspan="' + (cols.length + 1) + '" style="padding:16px 20px;white-space:pre-wrap;font-family:inherit;font-size:13px;line-height:1.6;border-bottom:2px solid var(--border, #27272a);">' +
+        '<div style="font-weight:700;margin-bottom:8px;color:var(--text, #fff);font-size:14px;">Subject: ' + escHtml(r.subject || '') + '</div>' +
+        '<div style="color:var(--text-1, #e4e4e7);white-space:pre-wrap;">' + escHtml(r.body || '') + '</div>' +
+        '</td></tr>';
     }
     return h + '</tbody></table></div></div>';
   };
@@ -1166,6 +1187,23 @@ async function sendingToggle(action) {
   const data = await api('/api/sending/' + action, {method: 'POST'});
   if (data && data.success) showToast(action === 'pause' ? 'Sending paused.' : 'Sending resumed.', 'success');
   else showToast('Failed.', 'error');
+  loadOutbox();
+}
+
+function toggleRowDetail(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = el.style.display === 'none' ? 'table-row' : 'none';
+}
+
+async function outboxSendNow() {
+  if (!confirm('Are you sure you want to send all approved emails now via SMTP?')) return;
+  showToast('Sending approved emails...', 'info');
+  const data = await api('/api/outbox/send-now', {method: 'POST'});
+  if (data && data.success) {
+    showToast('Emails dispatched successfully!', 'success');
+  } else {
+    showToast('Sending failed: ' + ((data && data.message) || 'unknown error'), 'error');
+  }
   loadOutbox();
 }
 

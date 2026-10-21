@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Obrive Leads Engine — Hostinger VPS Deployment Guide</title>
+<style>
+  @page {
+    size: A4;
+    margin: 16mm 14mm 16mm 14mm;
+    @bottom-right {
+      content: counter(page);
+    }
+  }
+
+  *, *:before, *:after {
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: #1e293b;
+    background: #ffffff;
+    line-height: 1.55;
+    font-size: 13.5px;
+    margin: 0;
+    padding: 0;
+  }
+
+  .header {
+    border-bottom: 2px solid #4f46e5;
+    padding-bottom: 12px;
+    margin-bottom: 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+
+  .brand-title {
+    font-size: 24px;
+    font-weight: 800;
+    color: #0f172a;
+    letter-spacing: -0.5px;
+    margin: 0;
+  }
+
+  .brand-title span {
+    color: #4f46e5;
+  }
+
+  .brand-sub {
+    font-size: 13px;
+    color: #64748b;
+    margin-top: 4px;
+    font-weight: 500;
+  }
+
+  .doc-badge {
+    background: #eef2ff;
+    color: #4338ca;
+    padding: 4px 10px;
+    border-radius: 9999px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid #c7d2fe;
+    text-align: right;
+  }
+
+  h1 {
+    font-size: 20px;
+    color: #0f172a;
+    margin: 20px 0 10px 0;
+    padding-bottom: 6px;
+    border-bottom: 1px solid #e2e8f0;
+    page-break-after: avoid;
+  }
+
+  h2 {
+    font-size: 16px;
+    color: #1e293b;
+    margin: 18px 0 8px 0;
+    page-break-after: avoid;
+  }
+
+  h3 {
+    font-size: 14px;
+    color: #334155;
+    margin: 14px 0 6px 0;
+    page-break-after: avoid;
+  }
+
+  p {
+    margin: 6px 0 10px 0;
+  }
+
+  ul, ol {
+    margin: 6px 0 10px 0;
+    padding-left: 20px;
+  }
+
+  li {
+    margin-bottom: 4px;
+  }
+
+  .card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 12px 14px;
+    margin: 10px 0 14px 0;
+  }
+
+  .diagram {
+    background: #0f172a;
+    color: #38bdf8;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 11.5px;
+    line-height: 1.4;
+    padding: 12px;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 10px 0 16px 0;
+    white-space: pre;
+  }
+
+  pre {
+    background: #0f172a;
+    color: #f1f5f9;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    line-height: 1.45;
+    overflow-x: auto;
+    margin: 8px 0 12px 0;
+    page-break-inside: avoid;
+    border-left: 3px solid #6366f1;
+  }
+
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 12px;
+    background: #f1f5f9;
+    color: #0f172a;
+    padding: 2px 5px;
+    border-radius: 4px;
+  }
+
+  pre code {
+    background: transparent;
+    color: inherit;
+    padding: 0;
+    border-radius: 0;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 10px 0 16px 0;
+    font-size: 12.5px;
+  }
+
+  th, td {
+    padding: 8px 10px;
+    border: 1px solid #e2e8f0;
+    text-align: left;
+  }
+
+  th {
+    background: #f1f5f9;
+    font-weight: 600;
+    color: #1e293b;
+  }
+
+  tr:nth-child(even) {
+    background: #f8fafc;
+  }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .tag-blue { background: #e0e7ff; color: #3730a3; }
+  .tag-green { background: #dcfce7; color: #166534; }
+  .tag-amber { background: #fef3c7; color: #92400e; }
+
+  .callout {
+    border-left: 4px solid #4f46e5;
+    background: #eef2ff;
+    padding: 10px 14px;
+    border-radius: 0 6px 6px 0;
+    margin: 10px 0 14px 0;
+    font-size: 13px;
+  }
+
+  .callout-warning {
+    border-left: 4px solid #f59e0b;
+    background: #fffbeb;
+    color: #92400e;
+  }
+
+  .footer-note {
+    margin-top: 30px;
+    padding-top: 10px;
+    border-top: 1px solid #e2e8f0;
+    font-size: 11px;
+    color: #94a3b8;
+    text-align: center;
+  }
+
+  .page-break {
+    page-break-before: always;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1 class="brand-title">OBRIVE <span>LEADS ENGINE</span></h1>
+    <div class="brand-sub">Autonomous AI SDR &amp; Outbox Approval Desk &bull; Hostinger VPS Deployment</div>
+  </div>
+  <div>
+    <div class="doc-badge">Subdomain: obleads.obrive.com</div>
+    <div style="font-size:11px; color:#64748b; margin-top:4px; text-align:right;">Version: 2.1 &bull; Oct 2026</div>
+  </div>
+</div>
+
+<div class="callout">
+  <strong>Deployment Summary:</strong> This guide walks you through deploying the Obrive Leads Engine 24/7 on your Hostinger Linux VPS under the canonical subdomain <strong><code>https://obleads.obrive.com</code></strong>, secured behind Nginx SSL (Let's Encrypt) and password-protected HTTP Basic Auth.
+</div>
+
+<h1>1. System Architecture</h1>
+<div class="diagram">
+                 [ User Browser / Mobile Phone ]
+                               │
+                               ▼ HTTPS (Port 443)
+                    https://obleads.obrive.com
+                               │
+              ┌────────────────┴────────────────┐
+              │      Hostinger Ubuntu VPS       │
+              │  [ Nginx Reverse Proxy + SSL ]  │
+              │   (Basic Auth: /etc/nginx/...)  │
+              └────────────────┬────────────────┘
+                               │ Proxy (127.0.0.1:5555)
+                               ▼
+              ┌─────────────────────────────────┐
+              │    Obrive Leads Engine Daemon   │
+              │  ├── FastAPI Dashboard (5555)   │
+              │  ├── Autonomous Heartbeat Agent │
+              │  ├── SQLite WAL (data/harvey.db)│
+              │  ├── Brevo SMTP Relay (Port 587)│
+              │  └── Free OpenRouter / Gemini AI│
+              └─────────────────────────────────┘
+</div>
+
+<h1>2. DNS Configuration on Hostinger</h1>
+<p>Log in to your <strong>Hostinger hPanel</strong> &rarr; <strong>Domains</strong> &rarr; <strong>DNS / Nameservers</strong>:</p>
+<table>
+  <thead>
+    <tr>
+      <th>Record Type</th>
+      <th>Host / Name</th>
+      <th>Points to (Value)</th>
+      <th>TTL</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><span class="tag tag-blue">A Record</span></td>
+      <td><strong>obleads</strong></td>
+      <td><code>YOUR_HOSTINGER_VPS_IP</code> (e.g. <code>185.xxx.xxx.xxx</code>)</td>
+      <td>300 (or Default)</td>
+    </tr>
+  </tbody>
+</table>
+<p style="font-size:12px; color:#64748b;"><em>Note: DNS propagation typically takes 5&ndash;15 minutes. Verify via terminal with <code>dig obleads.obrive.com +short</code> or <code>ping obleads.obrive.com</code>.</em></p>
+
+<h1>3. VPS Server Setup &amp; Dependencies</h1>
+<p>SSH into your Hostinger VPS as <code>root</code> (or your sudo administrative user):</p>
+<pre><code>ssh root@YOUR_HOSTINGER_VPS_IP</code></pre>
+
+<h3>Step 3.1: Install System Packages</h3>
+<pre><code>sudo apt update && sudo apt upgrade -y
+sudo apt install -y python3 python3-pip python3-venv git nginx certbot python3-certbot-nginx apache2-utils curl</code></pre>
+
+<h3>Step 3.2: Clone Repository</h3>
+<pre><code>mkdir -p /var/www
+cd /var/www
+git clone https://github.com/shivansh-006/ob-leads.git leads
+cd /var/www/leads</code></pre>
+
+<h3>Step 3.3: Set Up Python Virtual Environment</h3>
+<pre><code>python3 -m venv .venv
+source .venv/bin/activate
+pip install --upgrade pip
+pip install -e .</code></pre>
+
+<div class="page-break"></div>
+
+<h1>4. Environment Secrets Configuration</h1>
+<p>Create the production <code>.env</code> file at <code>/var/www/leads/.env</code>:</p>
+<pre><code>nano /var/www/leads/.env</code></pre>
+<p>Paste the following production credentials:</p>
+<pre><code># Brevo SMTP Relay (Outbound Sending)
+SMTP_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+SMTP_USERNAME=bea186001@smtp-brevo.com
+SMTP_PASSWORD=YOUR_BREVO_SMTP_MASTER_KEY
+
+# IMAP Settings (Inbound Reply Detection)
+IMAP_HOST=imap-relay.brevo.com
+IMAP_PORT=993
+IMAP_USERNAME=
+IMAP_PASSWORD=
+
+# Free AI Cloud Brains
+OPENROUTER_API_KEY=YOUR_OPENROUTER_API_KEY
+GEMINI_API_KEY=YOUR_GEMINI_API_KEY
+GROQ_API_KEY=
+
+# Lead Finder & Verification
+REOON_API_KEY=YOUR_REOON_API_KEY
+SERPER_API_KEY=</code></pre>
+
+<p>Lock down file permissions so only root can read credentials:</p>
+<pre><code>chmod 600 /var/www/leads/.env</code></pre>
+
+<h1>5. 24/7 Background Systemd Services</h1>
+<p>Create two dedicated systemd services so the dashboard and AI heartbeat runner start automatically on boot and restart if any failure occurs.</p>
+
+<h3>Service 1: Harvey Dashboard (<code>/etc/systemd/system/harvey-dashboard.service</code>)</h3>
+<pre><code>[Unit]
+Description=Obrive Leads Web Dashboard & Outbox API
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/var/www/leads
+EnvironmentFile=/var/www/leads/.env
+ExecStart=/var/www/leads/.venv/bin/python3 -m harvey dashboard
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+
+<h3>Service 2: Harvey Heartbeat Runner (<code>/etc/systemd/system/harvey-runner.service</code>)</h3>
+<pre><code>[Unit]
+Description=Obrive Leads Autonomous Heartbeat Runner
+After=network.target harvey-dashboard.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/var/www/leads
+EnvironmentFile=/var/www/leads/.env
+ExecStart=/var/www/leads/.venv/bin/python3 -m harvey run
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target</code></pre>
+
+<h3>Enable and Launch Both Services:</h3>
+<pre><code>sudo systemctl daemon-reload
+sudo systemctl enable --now harvey-dashboard
+sudo systemctl enable --now harvey-runner</code></pre>
+
+<div class="page-break"></div>
+
+<h1>6. Nginx Reverse Proxy, Basic Auth &amp; SSL</h1>
+
+<h3>Step 6.1: Create Password Protection for Dashboard</h3>
+<p>Create credentials for accessing <code>https://obleads.obrive.com</code>:</p>
+<pre><code>sudo htpasswd -c /etc/nginx/.ob_leads_passwd admin
+# Enter your desired secure password when prompted</code></pre>
+
+<h3>Step 6.2: Configure Nginx Site</h3>
+<p>Create <code>/etc/nginx/sites-available/obleads.conf</code>:</p>
+<pre><code>sudo nano /etc/nginx/sites-available/obleads.conf</code></pre>
+
+<p>Add the following configuration:</p>
+<pre><code>server {
+    listen 80;
+    server_name obleads.obrive.com;
+
+    # Protect the entire dashboard with HTTP Basic Auth
+    auth_basic "Obrive Leads Executive Portal";
+    auth_basic_user_file /etc/nginx/.ob_leads_passwd;
+
+    # Reverse proxy to local Harvey Dashboard port 5555
+    location / {
+        proxy_pass http://127.0.0.1:5555;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 120;
+    }
+
+    access_log /var/log/nginx/obleads_access.log;
+    error_log /var/log/nginx/obleads_error.log;
+}</code></pre>
+
+<h3>Step 6.3: Activate Site &amp; Verify Nginx</h3>
+<pre><code>sudo ln -s /etc/nginx/sites-available/obleads.conf /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx</code></pre>
+
+<h3>Step 6.4: Install Free Let's Encrypt SSL Certificate</h3>
+<p>Run Certbot to automatically configure HTTPS and auto-redirect HTTP:</p>
+<pre><code>sudo certbot --nginx -d obleads.obrive.com --non-interactive --agree-tos -m info@obrive.com</code></pre>
+
+<h1>7. Verification &amp; Daily Operations</h1>
+<ol>
+  <li>Open <strong><code>https://obleads.obrive.com</code></strong> in your browser.</li>
+  <li>Enter <code>admin</code> and your password.</li>
+  <li>You will see the <strong>Obrive Leads Outbox Desk</strong>:
+    <ul>
+      <li>Review target emails drafted by Dr. Malakh Jibrail (CEO).</li>
+      <li>Click <strong>"View Email"</strong> on any row to preview full HTML typography and links.</li>
+      <li>Click <strong>"⚡ Send Approved Now"</strong> to immediately dispatch queued emails via Brevo.</li>
+    </ul>
+  </li>
+</ol>
+
+<h3>Quick CLI Management Reference</h3>
+<table>
+  <thead>
+    <tr>
+      <th>Action</th>
+      <th>Command</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><strong>View Dashboard Logs</strong></td>
+      <td><code>journalctl -u harvey-dashboard -f</code></td>
+    </tr>
+    <tr>
+      <td><strong>View AI Heartbeat Logs</strong></td>
+      <td><code>journalctl -u harvey-runner -f</code></td>
+    </tr>
+    <tr>
+      <td><strong>Restart All Services</strong></td>
+      <td><code>sudo systemctl restart harvey-dashboard harvey-runner</code></td>
+    </tr>
+    <tr>
+      <td><strong>Deploy Updates from Git</strong></td>
+      <td><code>cd /var/www/leads && git pull && sudo systemctl restart harvey-dashboard harvey-runner</code></td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="footer-note">
+  Obrive Industries &bull; Confidential &bull; Designed for Sovereign Lead Generation Infrastructure &bull; https://obrive.com
+</div>
+
+</body>
+</html>

@@ -375,7 +375,10 @@ async def verify_reoon(email: str, api_key: str) -> Optional[dict]:
     if not isinstance(data, dict):
         return None
     status = str(data.get("status") or "").lower()
+    is_deliverable = bool(data.get("is_deliverable") or data.get("is_safe_to_send"))
     is_catch_all = bool(data.get("is_catch_all") or status == "catch_all")
+    if is_deliverable and status in ("valid", "deliverable", "role_account", "safe"):
+        status = "valid"
     return {"status": status, "catch_all": is_catch_all}
 
 

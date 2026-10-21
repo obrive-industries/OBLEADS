@@ -26,9 +26,9 @@ BANNED_PHRASES = (
     "as a language model",
 )
 
-MAX_SUBJECT_LEN = 90
-MAX_BODY_WORDS = 220        # hard ceiling; sequences aim far lower
-MAX_LINKS = 1
+MAX_SUBJECT_LEN = 120
+MAX_BODY_WORDS = 600        # Allow comprehensive enterprise presentations and full executive signatures
+MAX_LINKS = 15              # Allow company, services, booking links, and brand ecosystem links
 
 EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$")
 MERGE_TAG_RE = re.compile(r"\{\{\s*\w+\s*\}\}|\{\s*\w+\s*\}(?!\})")

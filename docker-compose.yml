@@ -2,17 +2,17 @@ services:
   harvey:
     build: .
     env_file: .env
+    ports:
+      - "127.0.0.1:5555:5555"
     volumes:
-      # Persist database across restarts
+      # Persist SQLite database and logs across restarts
       - ./data:/app/data
-      # Mount config for easy editing without rebuild
-      - ./harvey.yaml:/app/harvey.yaml:ro
+      # Mount config for live editing without rebuild
+      - ./harvey.yaml:/app/harvey.yaml
       - ./prompts:/app/prompts:ro
       - ./skills:/app/skills
-      # Mount Claude auth (required for Max plan usage).
-      # Not read-only: the CLI refreshes OAuth tokens in place.
-      # The container runs as non-root user "harvey" (uid 1000).
-      - ~/.claude:/home/harvey/.claude
+      # Optional: Uncomment below only if using Claude Code subscription instead of Cloud API
+      # - ~/.claude:/home/harvey/.claude
     restart: unless-stopped
     init: true
     logging:

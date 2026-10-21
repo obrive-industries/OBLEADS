@@ -453,7 +453,7 @@ async def start_harvey():
         log_handle = open(LOG_FILE, "a")
         try:
             _harvey_process = subprocess.Popen(
-                [sys.executable, "-m", "harvey"],
+                [sys.executable, "-m", "harvey", "run"],
                 cwd=str(PROJECT_ROOT),
                 stdout=log_handle,
                 stderr=log_handle,
@@ -746,6 +746,27 @@ async def outbox_reject(item_id: str):
         return {"success": True}
     except Exception as e:
         return JSONResponse({"success": False, "message": str(e)}, status_code=500)
+
+
+@app.post("/api/outbox/send-now")
+async def outbox_send_now():
+    """Immediately drain and send approved outbox emails via the configured mail provider."""
+    try:
+        from harvey.config import load_config, load_env
+        from harvey.brain import Brain
+        from harvey.agents.sender import Sender
+        config = load_config()
+        env = load_env()
+        state = _state()
+        await state.init_db()
+        brain = Brain(state, config.brain)
+        sender = Sender(brain, state, config, env)
+        await sender._drain_due()
+        return {"success": True}
+    except Exception as e:
+        logger.error(f"Failed to send approved outbox: {e}")
+        return JSONResponse({"success": False, "message": str(e)}, status_code=500)
+
 
 
 @app.post("/api/sending/{action}")

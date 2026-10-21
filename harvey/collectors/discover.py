@@ -487,32 +487,55 @@ class OpenStreetMap(DiscoveryProvider):
 
     # A friendly term maps to the OSM tags that actually carry those businesses.
     TAG_MAP = {
+        # Construction & trades
         "roof": ['craft=roofer', 'shop=roofing'],
         "plumb": ['craft=plumber'],
         "hvac": ['craft=hvac'],
         "electric": ['craft=electrician'],
-        "dentist": ['amenity=dentist'],
-        "lawyer": ['office=lawyer'],
-        "attorney": ['office=lawyer'],
         "contractor": ['craft=builder', 'office=construction_company'],
         "landscap": ['craft=gardener', 'shop=garden_centre'],
+        # Architecture, Design & Real Estate
+        "architect": ['office=architect'],
+        "design": ['office=architect', 'office=designer'],
+        "estate": ['office=estate_agent', 'shop=estate_agent'],
+        "realt": ['office=estate_agent'],
+        # Retail, Furniture & eCommerce
+        "retail": ['shop=furniture', 'shop=electronics', 'shop=department_store', 'shop=car'],
+        "furnitur": ['shop=furniture'],
+        "ecommerce": ['shop=furniture', 'shop=electronics', 'office=it'],
+        # Healthcare & Medical
+        "dentist": ['amenity=dentist'],
+        "doctor": ['amenity=doctors', 'amenity=clinic'],
+        "clinic": ['amenity=clinic'],
+        "health": ['amenity=clinic', 'amenity=hospital'],
+        "medic": ['amenity=clinic', 'shop=medical_supply'],
+        # Legal & Professional
+        "lawyer": ['office=lawyer'],
+        "attorney": ['office=lawyer'],
+        # Manufacturing, Aerospace & Automotive
+        "manufactur": ['industrial=factory', 'office=company'],
+        "industr": ['industrial=factory', 'office=company'],
+        "automotive": ['shop=car', 'shop=car_repair'],
+        "aerospace": ['industrial=factory', 'office=company'],
+        "dealership": ['shop=car'],
+        "vehicle": ['shop=car', 'shop=car_repair'],
+        # Technology, Education & Enterprise
+        "tech": ['office=it', 'office=company'],
+        "training": ['office=educational_institution', 'amenity=college'],
+        "edtech": ['office=educational_institution', 'office=it'],
+        "educat": ['amenity=school', 'amenity=college', 'amenity=university', 'office=educational_institution'],
+        "enterpris": ['office=company', 'office=it'],
+        "engine": ['office=engineer', 'office=architect'],
     }
 
     def _tags(self, term: str) -> list[str]:
-        """The OSM tags that actually carry this kind of business, or none.
-
-        There is deliberately no catch-all fallback. An earlier version fell
-        back to `office=company`, which answers "roofers in Denver" with every
-        registered office in Denver — coffee roasters, churches, photography
-        studios. A search this source cannot answer has to say so; filling the
-        database with plausible-looking junk is far worse than returning
-        nothing.
-        """
+        """The OSM tags that actually carry this kind of business, or none."""
         low = term.lower()
+        matched: list[str] = []
         for needle, tags in self.TAG_MAP.items():
             if needle in low:
-                return tags
-        return []
+                matched.extend(tags)
+        return list(dict.fromkeys(matched))
 
     async def fetch(self, client, env, query):
         if not query.coordinate:

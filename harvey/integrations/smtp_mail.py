@@ -16,8 +16,10 @@ UNSEEN inbox messages and marks them seen after retrieval.
 import asyncio
 import email
 import email.policy
+import html
 import imaplib
 import logging
+import re
 from email.message import EmailMessage
 from email.utils import make_msgid, parseaddr
 
@@ -69,6 +71,56 @@ class SmtpImapProvider(MailProvider):
             msg["In-Reply-To"] = in_reply_to
             msg["References"] = in_reply_to
         msg.set_content(body)
+
+        # Build clean HTML email with Obrive branding & clickable links
+        import html
+        body_escaped = html.escape(body).replace("\n", "<br/>")
+        body_html_content = re.sub(
+            r"(https?://[^\s<]+)",
+            r'<a href="\1" style="color: #4f46e5; font-weight: 500; text-decoration: underline;">\1</a>',
+            body_escaped,
+        )
+        html_body = f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; line-height: 1.6; color: #1e293b; background-color: #f8fafc; margin: 0; padding: 20px; }}
+  .container {{ max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 28px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }}
+  .header {{ border-bottom: 2px solid #f1f5f9; padding-bottom: 14px; margin-bottom: 20px; }}
+  .content {{ font-size: 15px; color: #334155; line-height: 1.65; }}
+  .footer {{ margin-top: 28px; padding-top: 14px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #64748b; }}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <a href="https://obrive.com" target="_blank" style="text-decoration: none; color: #0f172a; font-size: 20px; font-weight: bold; letter-spacing: -0.5px;">
+      <span style="color: #4f46e5; font-weight: 800; font-size: 22px;">OBRIVE</span> <span style="font-size: 14px; color: #64748b; font-weight: 500;">| AR / VR / MR, Spatial Computing & 3D AI</span>
+    </a>
+  </div>
+  <div class="content">
+    {body_html_content}
+  </div>
+  <div class="footer">
+    <div style="font-weight: 700; color: #1e293b; margin-bottom: 4px; font-size: 13px; letter-spacing: 0.5px;">OBRIVE INDUSTRIES</div>
+    <div style="color: #64748b; font-size: 12px; line-height: 1.5; margin-bottom: 8px;">
+      SREE GURURAYA MANSION, 3rd Floor, No 759, 8th Main Road<br/>
+      KSRTC Layout, 3rd Phase, JP Nagar, Bengaluru, Karnataka – 560078
+    </div>
+    <div style="color: #475569; font-size: 12px; margin-bottom: 8px;">
+      <strong>Connect Me :</strong> <a href="tel:+919886944447" style="color: #4f46e5; text-decoration: none;">+91 988-6944-447</a> &nbsp;&bull;&nbsp; 
+      <strong>Connect Us :</strong> <a href="tel:+918884774300" style="color: #4f46e5; text-decoration: none;">+91 888-4774-300</a>
+    </div>
+    <div style="color: #475569; font-size: 12px;">
+      <strong>Visit Us at :</strong> <a href="https://www.obrive.com" target="_blank" style="color: #4f46e5; text-decoration: none;">www.obrive.com</a> / <a href="https://www.obrive.in" target="_blank" style="color: #4f46e5; text-decoration: none;">www.obrive.in</a><br/>
+      <strong>Our Brands :</strong> <a href="https://www.obnov.in" target="_blank" style="color: #4f46e5; text-decoration: none;">www.obnov.in</a> / <a href="https://www.obzor.in" target="_blank" style="color: #4f46e5; text-decoration: none;">www.obzor.in</a>
+    </div>
+  </div>
+</div>
+</body>
+</html>"""
+        msg.add_alternative(html_body, subtype="html")
 
         try:
             await aiosmtplib.send(

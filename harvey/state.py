@@ -413,10 +413,20 @@ MIGRATIONS: list[str] = [
     -- so one subscription's budget never consumes the other's.
     ALTER TABLE usage_log ADD COLUMN codex_calls INTEGER DEFAULT 0;
     """,
+    """
+    ALTER TABLE usage_log ADD COLUMN api_calls INTEGER DEFAULT 0;
+    """,
 ]
 
-BRAIN_PROVIDERS = ("claude", "codex")
-_USAGE_LOG_COLUMN = {"claude": "claude_calls", "codex": "codex_calls"}
+BRAIN_PROVIDERS = ("claude", "codex", "gemini", "groq", "openrouter", "openai")
+_USAGE_LOG_COLUMN = {
+    "claude": "claude_calls",
+    "codex": "codex_calls",
+    "gemini": "api_calls",
+    "groq": "api_calls",
+    "openrouter": "api_calls",
+    "openai": "api_calls",
+}
 
 # When a company was last profiled: the newer of the explicit check stamp
 # (set on every attempt, reachable or not) and its latest profile observation
@@ -1298,6 +1308,39 @@ class StateManager:
             )
             await db.commit()
 
+    async def update_company_domain(self, company_id: str, domain: str, website: str = ""):
+        """Update domain and website for a company."""
+        domain = _norm(domain)
+        if not website:
+            website = f"https://{domain}" if domain else ""
+        async with self._connect() as db:
+            await db.execute(
+                """UPDATE companies SET domain = ?, website = ?, updated_at = CURRENT_TIMESTAMP
+                   WHERE id = ?""",
+                (domain, website, company_id),
+            )
+            await db.commit()
+
+    async def companies_needing_enrichment(
+        self, limit: int = 10, stale_days: int = 14
+    ) -> list[dict]:
+        """Companies needing AI executive and domain enrichment."""
+        async with self._connect() as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(
+                """SELECT c.id, c.name, c.domain, c.location, c.industry
+                   FROM companies c
+                   LEFT JOIN prospects p ON p.company_id = c.id
+                   WHERE (c.prospects_checked_at IS NULL
+                          OR c.prospects_checked_at < datetime('now', ?))
+                   GROUP BY c.id
+                   HAVING COUNT(p.id) = 0
+                   ORDER BY (c.domain != '') DESC, (c.prospects_checked_at IS NOT NULL), c.prospects_checked_at
+                   LIMIT ?""",
+                (f"-{int(stale_days)} days", int(limit)),
+            ) as cursor:
+                return [dict(r) for r in await cursor.fetchall()]
+
     # ── Run log (what ran, when, what it produced and cost) ──
 
     async def start_run(
@@ -1825,11 +1868,12 @@ class StateManager:
             ) as cursor:
                 open_conversations = (await cursor.fetchone())[0]
             async with db.execute(
-                "SELECT claude_calls, codex_calls FROM usage_log WHERE date = ?", (today,)
+                "SELECT claude_calls, codex_calls, api_calls FROM usage_log WHERE date = ?", (today,)
             ) as cursor:
                 usage_row = await cursor.fetchone()
                 usage_today = (usage_row[0] or 0) if usage_row else 0
                 codex_today = (usage_row[1] or 0) if usage_row else 0
+                api_today = (usage_row[2] or 0) if usage_row else 0
 
         return {
             "prospects": prospect_counts,
@@ -1837,7 +1881,7 @@ class StateManager:
             "active_campaigns": active_campaigns,
             "open_conversations": open_conversations,
             "usage_today": usage_today,  # Claude calls (kept for compatibility)
-            "usage_today_by_provider": {"claude": usage_today, "codex": codex_today},
+            "usage_today_by_provider": {"claude": usage_today, "codex": codex_today, "api": api_today},
             # Companies discovered but not yet read. The heartbeat profiles
             # these every cycle — it is free, so it never competes with the
             # Claude budget the rest of the loop is rationing.

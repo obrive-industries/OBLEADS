@@ -1,78 +1,109 @@
 persona:
-  name: "Harvey"
-  company: "Your Company"
-  role: "Business Development"
-  email: "harvey@yourcompany.com"
-  linkedin: "linkedin.com/in/harvey-yourcompany"
-  tone: "professional, consultative, confident"
+  name: "Dr. Malakh Jibrail"
+  company: "Obrive Industries"
+  role: "Chief Executive Officer"
+  email: "info@obrive.com"
+  phone_personal: "+91 988-6944-447"
+  phone_office: "+91 888-4774-300"
+  address: "SREE GURURAYA MANSION, 3rd Floor, No 759, 8th Main Road, KSRTC Layout, 3rd Phase, JP Nagar, Bengaluru, Karnataka – 560078"
+  websites: "www.obrive.com / www.obrive.in"
+  brands: "www.obnov.in / www.obzor.in"
+  linkedin: "linkedin.com/in/obrive-industries"
+  tone: "visionary, authoritative, consultative, professional"
 
 product:
-  name: "Your Product"
-  description: "Describe what your product does and who it's for"
-  pricing: "Starting at $X/mo"
+  name: "Obrive Enterprise Spatial Computing, AR/VR, AI & Digital Transformation"
+  description: "Obrive connects AR, VR, MR, 3D Design, AI & Spatial Computing to real-world business experiences. Delivering 16 core services (AR/VR/MR Development, 3D Product Configurators, Digital Twins, LLM Development, AI Consulting, Web/Mobile Apps, AEO/GEO/SEO) and proprietary products (OBPARK, OBNEST, OBNAVI, OBMOVE, OBCREW)."
+  pricing: "Tailored enterprise engagements & rapid pilot sprints"
   key_benefits:
-    - "Benefit 1"
-    - "Benefit 2"
-    - "Benefit 3"
+    - "AR/VR/MR & Spatial Computing: Interactive WebXR 3D product configurators, virtual showrooms, and spatial interfaces driving up to 94% conversion lift."
+    - "Immersive Training & Digital Twins: High-retention VR simulations for healthcare/manufacturing and real-time 3D digital twins for facilities."
+    - "AI & Modern Engineering: Custom LLM solutions, AI consulting, high-velocity SaaS/MVP development, and mobile/web engineering."
+    - "Proprietary Spatial Products: Turnkey solutions including OBPARK (smart parking/navigation), OBNEST (virtual real estate), OBNAVI (retail wayfinding), and OBMOVE (automotive virtual showroom)."
   objection_responses:
-    "too expensive": "I understand budget is important. Most of our clients see ROI within 30 days..."
-    "already have a solution": "That makes sense. Curious — what's the one thing you wish it did better?"
-    "not interested": "No worries at all. Mind if I ask what your current approach looks like?"
+    "too expensive": "Immersive 3D and spatial computing typically pay for themselves within months by cutting physical prototyping cycles by 60% and reducing return rates by up to 40%."
+    "already have a vendor": "Understood. Many clients come to us after standard 3D or marketing agencies fail to deliver real-time WebXR performance or seamless AI integration. Are your current systems real-time interactive across web, mobile, and headsets?"
+    "not our priority right now": "Totally understand. The shift from flat 2D screens to spatial and AI-driven experiences is accelerating. Would you be open to a 15-minute demo to see what peers in your sector are deploying today?"
   offer:
-    primary: ""                    # Main offer (e.g., "Monthly subscription starting at $99/mo")
-    entry: ""                      # Low-commitment entry (e.g., "14-day free trial", "Free audit")
-    goal: "book_call"              # Goal of outreach: book_call, start_trial, get_reply
-    booking_method: "calendar_link" # calendar_link, suggest_times, ask_preference
-    booking_url: ""                # Calendar link URL (if using calendar_link method)
-    meeting_duration: "15 minutes" # How long the call is
-    meeting_owner: ""              # Who takes the meeting (name or role)
+    primary: "Custom Enterprise Spatial Computing / AI Solution Deployment"
+    entry: "Free 15-Minute Strategic Audit & Interactive 3D/AI Demo"
+    goal: "book_call"
+    booking_method: "calendar_link"
+    booking_url: "https://calendly.com/obrive-inc/talk-to-ob-experts?country=us"
+    meeting_duration: "15 minutes"
+    meeting_owner: "Obrive Solutions Team"
 
 icp:
   industries:
-    - "SaaS"
-    - "Marketing Agency"
-  company_size: "10-200 employees"
+    - "Real Estate"
+    - "Automotive"
+    - "Retail"
+    - "Healthcare"
+    - "Manufacturing"
+    - "Architecture & Engineering"
+    - "Education"
+    - "Enterprise"
+  company_size: "10-1000 employees"
   titles:
-    - "VP Marketing"
-    - "Head of Growth"
+    - "CEO"
+    - "Founder"
+    - "Co-Founder"
+    - "Managing Director"
+    - "Owner"
+    - "Partner"
+    - "CTO"
+    - "Chief Technology Officer"
     - "CMO"
-    - "Director of Marketing"
+    - "Chief Marketing Officer"
+    - "VP"
+    - "Vice President"
+    - "Head of"
+    - "Director"
+    - "General Manager"
+    - "Principal"
+    - "Architect"
   geography:
     - "United States"
-  # Roles that signal a company is in-market RIGHT NOW (a company hiring a
-  # "Head of Growth" is shopping for growth tooling). Used for careers-page
-  # scanning and job-board discovery. Empty = fall back to titles above.
-  hiring_signals: []
+    - "United Kingdom"
+    - "United Arab Emirates"
+    - "India"
+    - "Germany"
+    - "Canada"
+  hiring_signals:
+    - "3D Artist"
+    - "Unity Developer"
+    - "Unreal Engine Developer"
+    - "AR/VR Engineer"
+    - "AI Engineer"
+    - "Spatial Designer"
 
 channels:
   email:
     enabled: true
-    provider: "gmail"          # gmail (recommended) | microsoft | smtp | instantly
+    provider: "smtp"            # Brevo SMTP Relay
     max_daily_sends: 50
-    require_approval: true      # native providers: emails wait in the Outbox
-    send_to_risky: false        # also send to catch-all domains (off = safest)
-    max_bounce_rate: 0.05       # pause all sending if bounces exceed this
+    require_approval: true      # Approvals wait in Outbox on dashboard (localhost:5555)
+    send_to_risky: true
+    max_bounce_rate: 0.05
   linkedin:
-    enabled: true
+    enabled: false
     max_daily_connections: 20
     max_daily_messages: 10
+
+brain:
+  provider: "openrouter"
+  model: "nvidia/nemotron-3-super-120b-a12b:free"
 
 usage:
   max_daily_claude_percent: 80
   heartbeat_interval_minutes: 15
   quiet_hours:
-    start: "22:00"
-    end: "07:00"
-    timezone: "America/New_York"
+    start: "04:00"
+    end: "05:00"
+    timezone: "Asia/Kolkata"
 
-# Optional: check each new recipient with Precleared (precleared.dev) before
-# the first cold email: may cold marketing email go to this address under UK
-# PECR, US CAN-SPAM, Canada's CASL, Germany's UWG and France's rules? Any other
-# answer holds the email back, with the reason in the Outbox. One check per
-# address; 10 a day free without a key, 25 with a free key (PRECLEARED_API_KEY
-# in .env). Applies to the native providers (gmail, smtp).
 compliance:
   precleared:
     enabled: false
-    sender_country: ""          # GB or US: where your business is based
-    address_source: "unknown"   # published | bought | scraped | given | unknown
+    sender_country: "US"
+    address_source: "unknown"

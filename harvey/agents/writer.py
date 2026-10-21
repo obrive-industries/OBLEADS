@@ -177,55 +177,45 @@ class Writer:
         ]
         if prospect.industry:
             facts.append(f"- Industry: {prospect.industry}")
-
-        company = None
-        if prospect.company_id:
-            try:
-                company = await self.state.get_company(prospect.company_id)
-            except Exception:
-                company = None
-        if company:
-            if company.description:
-                facts.append(f"- What the company says about itself: {company.description}")
-            if company.tech_stack:
-                facts.append(f"- Tools detected on their website: {', '.join(company.tech_stack[:6])}")
-            for signal in company.signals[:3]:
-                facts.append(
-                    f"- Signal ({signal.get('type', 'signal')}): {signal.get('detail', '')}"
-                )
         if prospect.personalization_notes:
             facts.append(f"- Research notes: {prospect.personalization_notes}")
 
-        prompt = self.brain.load_prompt(
-            "writer",
-            product_name=self.config.product.name,
-            product_description=self.config.product.description,
-            product_benefits="\n".join(f"- {b}" for b in self.config.product.key_benefits),
-            product_pricing=self.config.product.pricing,
-            persona_name=self.config.persona.name,
-            persona_company=self.config.persona.company,
-            persona_role=self.config.persona.role,
-            persona_tone=self.config.persona.tone,
-        ) or ""
-        if self.skills:
-            prompt += "\n\n" + self.skills
+        sender_name = getattr(self.config.persona, "name", "Dr. Malakh Jibrail") or "Dr. Malakh Jibrail"
+        sender_role = getattr(self.config.persona, "role", "Chief Executive Officer") or "Chief Executive Officer"
 
-        prompt += f"""
+        prompt = f"""You are {sender_name}, {sender_role} at Obrive Industries (https://obrive.com).
+Tone: visionary, authoritative, consultative, professional.
 
-Write ONE cold email (the very first touch) to this specific person.
+Obrive Enterprise Portfolio:
+- Website: https://obrive.com | https://obrive.in
+- Brands: https://obnov.in | https://obzor.in
+- Services: https://obrive.com/services (16 core services: AR/VR/MR development, WebXR 3D product configurators, Digital Twins, custom LLMs, AI consulting)
+- Core Capabilities: Cutting-edge Augmented Reality (AR), Virtual Reality (VR), Mixed Reality (MR), Spatial Computing & 3D WebXR.
+- Proprietary Products: OBNEST (AR/VR/WebXR 3D virtual real estate tours & digital twins), OBMOVE (AR/VR 3D vehicle configurators & virtual showrooms), OBNAVI (spatial wayfinding), OBPARK (smart parking).
+- Booking: https://calendly.com/obrive-inc/talk-to-ob-experts?country=us
 
-FACTS — everything you know about them. Every claim about the prospect in
-your email must come from these facts. If a fact isn't listed here, you
-don't know it — do not invent funding rounds, mutual contacts, metrics,
-or anything else:
+Write ONE cold business development email to this specific person:
 {chr(10).join(facts)}
 
 Requirements:
-- Under 75 words. One specific observation from the FACTS above, one
-  question. No pitch, no product name.
-- Write the actual text (no merge variables — you know their name/company).
-- Subject: lowercase, 2-5 words.
-- Follow every STRICT EMAIL RULE above.
+- Length: 120-170 words.
+- Clearly introduce {sender_name} ({sender_role}) from Obrive Industries.
+- Tailor why we are reaching out to their specific company ({prospect.company}) and industry.
+- Detail the relevant Obrive solution (for Real Estate: OBNEST WebXR interactive 3D virtual walkthroughs & digital twins; for Automotive: OBMOVE 3D vehicle configurators & virtual showrooms; both powered by AR/VR/MR and Spatial Computing).
+- State that zero app download is required (runs directly in mobile/desktop web browsers) and achieves up to 94% conversion lift.
+- Invite them to explore our services at https://obrive.com/services and book a 15-minute live demo at https://calendly.com/obrive-inc/talk-to-ob-experts?country=us.
+- Include full professional signature:
+  Warm Regards,
+  {sender_name}
+  {sender_role}
+  Obrive Industries
+  Sree Gururaya Mansion, 3rd Floor, No 759, 8th Main Road
+  KSRTC Layout, 3rd Phase, JP Nagar, Bengaluru, Karnataka – 560078
+  Connect Me : +91 988-6944-447
+  Connect Us : +91 888-4774-300
+  Visit Us at : www.obrive.com / www.obrive.in
+  Our Brands : www.obnov.in / www.obzor.in
+- Subject: lowercase, 3-6 words, professional.
 
 Return ONLY JSON: {{"subject": "...", "body": "..."}}"""
 
@@ -243,55 +233,63 @@ Return ONLY JSON: {{"subject": "...", "body": "..."}}"""
 
     async def _write_sequence(self, prospects: list) -> list[EmailStep]:
         """Ask the brain to write a 3-email sequence."""
-        # Build context about the prospects
         prospect_summary = "\n".join(
             f"- {p.full_name()}, {p.title} at {p.company}"
             + (f" | Notes: {p.personalization_notes}" if p.personalization_notes else "")
-            for p in prospects[:5]  # Show sample for context
+            for p in prospects[:5]
         )
 
-        prompt = self.brain.load_prompt(
-            "writer",
-            product_name=self.config.product.name,
-            product_description=self.config.product.description,
-            product_benefits="\n".join(f"- {b}" for b in self.config.product.key_benefits),
-            product_pricing=self.config.product.pricing,
-            persona_name=self.config.persona.name,
-            persona_company=self.config.persona.company,
-            persona_role=self.config.persona.role,
-            persona_tone=self.config.persona.tone,
-        )
+        industry = prospects[0].industry if prospects else "Enterprise"
+        sender_name = getattr(self.config.persona, "name", "Dr. Malakh Jibrail") or "Dr. Malakh Jibrail"
+        sender_role = getattr(self.config.persona, "role", "Chief Executive Officer") or "Chief Executive Officer"
 
-        if not prompt:
-            prompt = f"""You are {self.config.persona.name}, {self.config.persona.role} at {self.config.persona.company}.
-Your tone is: {self.config.persona.tone}
+        prompt = f"""You are {sender_name}, {sender_role} at Obrive Industries (https://obrive.com).
+Tone: visionary, authoritative, consultative, professional.
 
-Product: {self.config.product.name}
-Description: {self.config.product.description}
-Key benefits: {', '.join(self.config.product.key_benefits)}
-Pricing: {self.config.product.pricing}"""
+Obrive Enterprise Portfolio:
+- Website: https://obrive.com | https://obrive.in
+- Brands: https://obnov.in | https://obzor.in
+- Services: https://obrive.com/services (16 core services: AR/VR/MR development, WebXR 3D product configurators, Digital Twins, custom LLMs, AI consulting)
+- Core Capabilities: Cutting-edge Augmented Reality (AR), Virtual Reality (VR), Mixed Reality (MR), Spatial Computing & 3D WebXR.
+- Proprietary Products: OBNEST (AR/VR/WebXR 3D virtual real estate tours & digital twins), OBMOVE (AR/VR 3D vehicle configurators & virtual showrooms), OBNAVI (spatial wayfinding), OBPARK (smart parking).
+- Booking: https://calendly.com/obrive-inc/talk-to-ob-experts?country=us
 
-        # Inject email framework skills
-        if self.skills:
-            prompt += "\n\n" + self.skills
-
-        prompt += f"""
-
-Write a 3-email cold outreach sequence for prospects like these:
+Write a 3-email cold business development sequence for {industry} prospects like these:
 {prospect_summary}
 
 Requirements:
-- Email 1: Personalized cold observation + one question. Under 75 words. No pitch.
-- Email 2: Follow-up 3 days later. Different angle, one concrete proof point. Under 75 words.
-- Email 3: Break-up email 4 days after that. Under 40 words. Gracious, not guilt-tripping.
-- Use {{{{first_name}}}}, {{{{company}}}}, {{{{title}}}} as merge variables — every email
-  must use at least one, and email 1 must reference something specific to
-  these prospects' industry or role (use the notes above).
-- Never be pushy or salesy. Be consultative and value-driven.
-- Subject lines: lowercase, 2-5 words.
-- Follow every rule in the STRICT EMAIL RULES above. No exceptions.
+- Email 1 (120-170 words):
+  * Introduce {sender_name} ({sender_role}) from Obrive Industries.
+  * State why we are reaching out, tailored specifically to {{{{company}}}} and their projects in {industry}.
+  * Detail our solution (for Real Estate: OBNEST WebXR interactive 3D virtual walkthroughs & digital twins; for Automotive: OBMOVE 3D vehicle configurators & virtual showrooms; leveraging AR/VR/MR and spatial computing).
+  * Highlight advantage: zero app install needed (runs smoothly in standard mobile & desktop web browsers) and delivers up to 94% conversion lift.
+  * Invite to explore https://obrive.com/services and book a 15-min interactive demo at https://calendly.com/obrive-inc/talk-to-ob-experts?country=us.
+  * Signature:
+    Warm Regards,
+    {sender_name}
+    {sender_role}
+    Obrive Industries
+    Sree Gururaya Mansion, 3rd Floor, No 759, 8th Main Road
+    KSRTC Layout, 3rd Phase, JP Nagar, Bengaluru, Karnataka – 560078
+    Connect Me : +91 988-6944-447
+    Connect Us : +91 888-4774-300
+    Visit Us at : www.obrive.com / www.obrive.in
+    Our Brands : www.obnov.in / www.obzor.in
 
-Return ONLY a JSON array (no markdown fences, no commentary):
+- Email 2 (Follow-up, 80-120 words):
+  * Follow up on the previous note with a brief case-study metric (e.g. 60% faster visualization cycle, 40% reduction in return/indecision rates).
+  * Reiterate the link to test live demos or schedule a chat.
+  * Include signature.
+
+- Email 3 (Closing, 40-70 words):
+  * Courteous check-in to see if AR/VR/MR, spatial computing or 3D digital twins are on their roadmap.
+  * Leave the door open with links to Obrive and the demo calendar.
+  * Include signature.
+
+- Use {{{{first_name}}}}, {{{{company}}}}, {{{{title}}}} as merge variables.
+- Subject lines: lowercase, 3-6 words, professional.
+
+Return ONLY a valid JSON array:
 [
   {{"step": 1, "subject": "...", "body": "...", "delay_days": 0}},
   {{"step": 2, "subject": "...", "body": "...", "delay_days": 3}},
@@ -311,12 +309,18 @@ Return ONLY a JSON array (no markdown fences, no commentary):
         or wrong-typed fields, and extra keys. Drops invalid steps rather
         than failing the whole sequence.
         """
+        if isinstance(result, str):
+            result = self.brain._extract_json(result)
         if isinstance(result, dict):
             # Model wrapped the array in an object — unwrap common keys.
-            for key in ("emails", "sequence", "steps", "campaign"):
+            for key in ("emails", "sequence", "steps", "campaign", "data"):
                 if isinstance(result.get(key), list):
                     result = result[key]
                     break
+            else:
+                # If the dict itself is a single step
+                if "subject" in result and "body" in result:
+                    result = [result]
         if not isinstance(result, list) or not result:
             logger.error(f"Writer: Brain did not return an email array (got {type(result).__name__}).")
             return []

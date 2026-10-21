@@ -20,6 +20,9 @@ from harvey.state import StateManager
 logger = logging.getLogger("harvey.brain")
 
 from harvey.paths import PROJECT_ROOT
+from dotenv import load_dotenv
+
+load_dotenv(PROJECT_ROOT / ".env")
 
 PROMPTS_DIR = PROJECT_ROOT / "prompts"
 SKILLS_DIR = PROJECT_ROOT / "skills"
@@ -39,7 +42,14 @@ _NON_RETRYABLE_PATTERNS = (
 )
 
 
-PROVIDER_LABELS = {"claude": "Claude", "codex": "Codex"}
+PROVIDER_LABELS = {
+    "claude": "Claude",
+    "codex": "Codex",
+    "gemini": "Gemini",
+    "groq": "Groq",
+    "openrouter": "OpenRouter",
+    "openai": "OpenAI",
+}
 
 # Settings key holding the brain's last health transition, for `harvey
 # status` and the dashboard: {"provider", "status": "ok"|"paused", "reason",
@@ -101,6 +111,8 @@ class Brain:
                 model=self.model, reasoning_effort=self.config.reasoning_effort
             )
             self.quota = CodexQuotaClient(self.codex)
+        elif self.provider in ("gemini", "groq", "openrouter", "openai"):
+            self.quota = None
         else:
             # Lazy import avoids a cycle (quota -> usage -> state).
             from harvey.integrations.quota import QuotaClient
@@ -120,19 +132,20 @@ class Brain:
         return ""
 
     async def preflight(self) -> str:
-        """Can this Brain be used right now? Returns "" or the reason not.
+        """Can this Brain be used right now? Returns "" or the reason not."""
+        if self.provider in ("gemini", "groq", "openrouter", "openai"):
+            import os
+            key_map = {
+                "gemini": "GEMINI_API_KEY",
+                "groq": "GROQ_API_KEY",
+                "openrouter": "OPENROUTER_API_KEY",
+                "openai": "OPENAI_API_KEY",
+            }
+            env_var = key_map.get(self.provider, "")
+            if not os.getenv(env_var, "").strip():
+                return f"{self.provider_label} API key missing. Please set {env_var} in .env."
+            return ""
 
-        Codex only (Claude keeps its existing behaviour): runs the adapter's
-        full pre-prompt check (CodexClient.preflight): CLI version, route and
-        lockdown attested with no login in the runtime, the native login read
-        only (expiry, renewal), then with the access-only copy the configured
-        model against the catalog, the ChatGPT account, and a started
-        tool-less thread. No turn, so no inference; nothing is written to the
-        native login. While paused, the check is repeated only when the login
-        file or the Codex executable changes, or every
-        PROVIDER_RECHECK_SECONDS, so a persistent problem doesn't start
-        runtimes every heartbeat.
-        """
         if self.provider != "codex":
             return ""
         from harvey.codex import CodexError
@@ -239,6 +252,11 @@ class Brain:
         """
         if self.provider == "codex":
             return await self._think_codex(
+                prompt, session_id=session_id, timeout=timeout,
+                max_retries=max_retries, agent=agent, task=task,
+            )
+        if self.provider in ("gemini", "groq", "openrouter", "openai"):
+            return await self._think_cloud_api(
                 prompt, session_id=session_id, timeout=timeout,
                 max_retries=max_retries, agent=agent, task=task,
             )
@@ -458,6 +476,157 @@ class Brain:
             **result.usage,
         )
 
+    async def _think_cloud_api(
+        self,
+        prompt: str,
+        session_id: str | None,
+        timeout: float,
+        max_retries: int,
+        agent: str,
+        task: str,
+    ) -> str:
+        """Call free Cloud APIs (Google Gemini, Groq, OpenRouter, OpenAI)."""
+        import os
+        import httpx
+
+        last_error = ""
+        provider = self.provider
+
+        if provider == "gemini":
+            api_key = os.getenv("GEMINI_API_KEY", "").strip()
+            model = self.model or "gemini-2.0-flash"
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+            payload = {
+                "contents": [
+                    {"role": "user", "parts": [{"text": prompt}]}
+                ],
+                "generationConfig": {
+                    "temperature": 0.7,
+                }
+            }
+            headers = {"Content-Type": "application/json"}
+        elif provider == "groq":
+            api_key = os.getenv("GROQ_API_KEY", "").strip()
+            model = self.model or "llama-3.3-70b-versatile"
+            url = "https://api.groq.com/openai/v1/chat/completions"
+            payload = {
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.7,
+                "max_tokens": 2048,
+            }
+            headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        elif provider == "openrouter":
+            api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+            model = self.model or "nvidia/nemotron-3-super-120b-a12b:free"
+            url = "https://openrouter.ai/api/v1/chat/completions"
+            payload = {
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.3,
+                "max_tokens": 3500,
+                "reasoning": {"max_tokens": 0},
+            }
+            headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+        else:  # openai
+            api_key = os.getenv("OPENAI_API_KEY", "").strip()
+            model = self.model or "gpt-4o-mini"
+            url = "https://api.openai.com/v1/chat/completions"
+            payload = {
+                "model": model,
+                "messages": [{"role": "user", "content": prompt}],
+                "temperature": 0.7,
+                "max_tokens": 2048,
+            }
+            headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+
+        for attempt in range(max_retries + 1):
+            if attempt > 0:
+                delay = RETRY_BASE_DELAY * (2 ** (attempt - 1))
+                logger.info(
+                    f"Retrying {self.provider_label} call in {delay:.0f}s "
+                    f"(attempt {attempt + 1}/{max_retries + 1})..."
+                )
+                await asyncio.sleep(delay)
+
+            try:
+                start_t = time.monotonic()
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    resp = await client.post(url, json=payload, headers=headers)
+                    if resp.status_code != 200:
+                        err_text = resp.text
+                        logger.error(f"{self.provider_label} HTTP {resp.status_code}: {err_text[:300]}")
+                        last_error = f"HTTP {resp.status_code}: {err_text[:200]}"
+                        if resp.status_code in (401, 403):
+                            logger.error(f"Invalid {self.provider_label} API key. Please check your .env file.")
+                            return ""
+                        continue
+
+                    data = resp.json()
+                    if "error" in data:
+                        err_msg = data.get("error", {}).get("message", str(data["error"]))
+                        logger.error(f"{self.provider_label} returned error: {err_msg}")
+                        last_error = err_msg
+                        continue
+
+                    duration_ms = int((time.monotonic() - start_t) * 1000)
+
+                    if provider == "gemini":
+                        candidates = data.get("candidates", [])
+                        if not candidates:
+                            logger.error(f"Gemini returned no candidates: {data}")
+                            return ""
+                        text = candidates[0].get("content", {}).get("parts", [{}])[0].get("text", "")
+                        usage_meta = data.get("usageMetadata", {})
+                        in_tok = usage_meta.get("promptTokenCount", 0)
+                        out_tok = usage_meta.get("candidatesTokenCount", 0)
+                    else:
+                        choices = data.get("choices", [])
+                        if not choices:
+                            logger.error(f"{self.provider_label} returned no choices: {data}")
+                            last_error = "no choices in response"
+                        msg_obj = choices[0].get("message", {})
+                        text = msg_obj.get("content") or msg_obj.get("reasoning") or ""
+                        usage = data.get("usage", {})
+                        in_tok = usage.get("prompt_tokens", 0)
+                        out_tok = usage.get("completion_tokens", 0)
+
+                    try:
+                        await self.state.increment_usage(provider=provider)
+                    except Exception as e:
+                        logger.warning(f"Failed to record usage counter: {e}")
+
+                    try:
+                        await self.state.record_usage_event(
+                            agent=agent,
+                            task=task,
+                            session_id=session_id or "",
+                            request_key=f"{provider}-{uuid.uuid4().hex[:12]}",
+                            model=model,
+                            input_tokens=in_tok,
+                            output_tokens=out_tok,
+                            cost_usd=0.0,
+                            duration_ms=duration_ms,
+                            provider=provider,
+                        )
+                    except Exception as e:
+                        logger.warning(f"Failed to record usage event: {e}")
+
+                    return text
+
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                logger.error(f"{self.provider_label} API error: {e}")
+                last_error = str(e)
+                continue
+
+        logger.error(
+            f"{self.provider_label} call failed after {max_retries + 1} attempts. "
+            f"Last error: {last_error[:200]}"
+        )
+        return ""
+
     @staticmethod
     def _parse_result_payload(raw: str) -> tuple[str, dict | None]:
         """Split CLI JSON output into (response_text, result_payload).
@@ -560,16 +729,23 @@ class Brain:
         cleaned = re.sub(r"^```(?:json)?\s*", "", text.strip())
         cleaned = re.sub(r"\s*```$", "", cleaned)
         try:
-            return json.loads(cleaned)
+            return json.loads(cleaned, strict=False)
         except json.JSONDecodeError:
             pass
-        # Fall back: model wrapped the JSON in explanation text
-        for open_ch, close_ch in (("{", "}"), ("[", "]")):
+        # Determine whether array or object starts first
+        first_bracket = cleaned.find("[")
+        first_brace = cleaned.find("{")
+        if first_bracket != -1 and (first_brace == -1 or first_bracket < first_brace):
+            order = (("[", "]"), ("{", "}"))
+        else:
+            order = (("{", "}"), ("[", "]"))
+
+        for open_ch, close_ch in order:
             start = cleaned.find(open_ch)
             end = cleaned.rfind(close_ch)
             if start != -1 and end > start:
                 try:
-                    return json.loads(cleaned[start : end + 1])
+                    return json.loads(cleaned[start : end + 1], strict=False)
                 except json.JSONDecodeError:
                     continue
         return None
@@ -604,7 +780,7 @@ class Brain:
             # not be mistaken for room to spend.
             logger.info(f"{self.paused_reason}; waiting for it to reset.")
             return False
-        if max_percent is not None:
+        if max_percent is not None and self.quota is not None:
             try:
                 windows = await self.quota.get_utilization()
             except Exception as e:

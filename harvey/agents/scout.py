@@ -141,6 +141,7 @@ class Scout:
         # the mercy of Serper/Bing flakiness — cheapest, most reliable win
         # available before spending any queries.
         strategies.append(("known_companies", self._prospect_via_known_companies))
+        strategies.append(("ai_enrichment", self._prospect_via_ai_enrichment))
         if self.config.channels.linkedin.enabled and self.env.linkedin_email:
             strategies.append(("linkedin", self._prospect_via_linkedin))
         # Job boards first: hiring is the strongest intent signal, and the
@@ -434,6 +435,22 @@ class Scout:
             if not (link and link.get("href")):
                 continue
             href = self._attr_str(link.get("href"))
+            if "bing.com/ck/a" in href:
+                try:
+                    params = parse_qs(urlparse(href).query)
+                    u_val = params.get("u", [])
+                    if u_val:
+                        raw_u = u_val[0]
+                        if raw_u.startswith("a1"):
+                            raw_u = raw_u[2:]
+                        pad = (4 - len(raw_u) % 4) % 4
+                        raw_u += "=" * pad
+                        import base64
+                        decoded_url = base64.b64decode(raw_u).decode("utf-8", errors="ignore")
+                        if decoded_url.startswith("http"):
+                            href = decoded_url
+                except Exception:
+                    pass
             snippet = snippet_el.get_text().strip() if snippet_el else ""
             if href.startswith("http"):
                 results.append((href, snippet))
@@ -628,6 +645,140 @@ class Scout:
                 )
                 if count >= MAX_PROSPECTS_PER_CYCLE:
                     return count
+
+        return count
+
+    # ── Strategy 0B: AI enrichment for known companies ──
+
+    async def _prospect_via_ai_enrichment(self) -> int:
+        """Enrich known companies using the AI brain (OpenRouter/Nemotron) to identify
+        executives and domains, then resolve verified emails via Reoon."""
+        if not hasattr(self.state, "companies_needing_enrichment"):
+            return 0
+
+        try:
+            companies = await self.state.companies_needing_enrichment(limit=6)
+        except Exception as e:
+            logger.debug(f"companies_needing_enrichment failed: {e}")
+            return 0
+
+        if not companies:
+            return 0
+
+        logger.info(f"Scout: AI enriching {len(companies)} companies with Brain ({self.brain.provider_label})...")
+
+        items = []
+        for i, c in enumerate(companies, 1):
+            name = c.get("name") or ""
+            loc = c.get("location") or "India"
+            ind = c.get("industry") or "Business"
+            dom = c.get("domain") or ""
+            items.append(f"{i}. Name: {name} | Location: {loc} | Industry: {ind} | Known Domain: {dom}")
+
+        prompt = f"""You are a B2B sales intelligence specialist for Obrive Industries.
+For each company below, identify the primary executive (Founder, CEO, Managing Director, Partner, or Principal) and official company website domain.
+
+Companies:
+{chr(10).join(items)}
+
+Respond strictly as a JSON array:
+[
+  {{
+    "index": 1,
+    "domain": "example.com",
+    "first_name": "First",
+    "last_name": "Last",
+    "title": "Managing Director"
+  }}
+]
+Only return the JSON array, with no other text."""
+
+        try:
+            results = await self.brain.think_json(
+                prompt,
+                session_id="harvey-scout-ai-enrich",
+                agent="scout",
+                task="ai_enrichment",
+            )
+        except Exception as e:
+            logger.warning(f"Scout: AI enrichment think_json failed: {e}")
+            results = None
+
+        count = 0
+        default_industry = self.config.icp.industries[0] if self.config.icp.industries else "Enterprise"
+
+        for comp in companies:
+            try:
+                await self.state.mark_prospects_checked(comp["id"])
+            except Exception:
+                pass
+
+        if not isinstance(results, list):
+            return 0
+
+        for item in results:
+            if not isinstance(item, dict):
+                continue
+            idx = item.get("index")
+            if not idx or not (1 <= idx <= len(companies)):
+                continue
+            comp = companies[idx - 1]
+            first_name = (item.get("first_name") or "").strip()
+            last_name = (item.get("last_name") or "").strip()
+            domain = (item.get("domain") or comp.get("domain") or "").strip()
+            title = (item.get("title") or "Managing Director").strip()
+
+            if not first_name or not domain or "." not in domain:
+                continue
+
+            # Update company domain if missing
+            if not comp.get("domain") and domain:
+                try:
+                    await self.state.update_company_domain(comp["id"], domain=domain)
+                except Exception:
+                    pass
+
+            email, email_status = await self._resolve_email(first_name, last_name, domain)
+            if email_status not in ("verified", "risky"):
+                from harvey.integrations.email_finder import _verify_candidate
+                for prefix in ("contact", "info", "sales", "hello", "office"):
+                    cand = f"{prefix}@{domain}"
+                    st, _ = await _verify_candidate(cand, "", self.env)
+                    if st in ("verified", "risky"):
+                        email = cand
+                        email_status = st
+                        break
+
+            prospect = Prospect(
+                first_name=first_name,
+                last_name=last_name,
+                email=email,
+                email_status=email_status,
+                email_verified=(email_status == "verified"),
+                company=comp.get("name") or domain,
+                company_id=comp["id"],
+                title=title,
+                seniority=self._infer_seniority(title),
+                industry=comp.get("industry") or default_industry,
+                source="ai_enrichment",
+                source_url=f"https://{domain}",
+                personalization_notes=f"Key executive at {comp.get('name')}",
+            )
+
+            if not prospect.is_valid():
+                continue
+            if await self._is_duplicate_prospect(prospect):
+                continue
+
+            await self.state.add_prospect(prospect)
+            self._remember_prospect(prospect)
+            count += 1
+            logger.info(
+                f"Scout: Added {prospect.full_name()} ({prospect.title}) "
+                f"at {prospect.company} [{prospect.email} ({prospect.email_status})]"
+            )
+            if count >= MAX_PROSPECTS_PER_CYCLE:
+                break
 
         return count
 
@@ -1814,9 +1965,10 @@ Respond ONLY with the JSON array."""
         title_lower = title.lower()
         if self.config.icp.titles:
             for target in self.config.icp.titles:
-                t = target.lower().strip()
-                if t and t in title_lower:
-                    return True
+                for sub in re.split(r"[/,]", target):
+                    t = sub.lower().strip()
+                    if t and t in title_lower:
+                        return True
             return False
         # No explicit ICP titles → fall back to any senior title.
         return any(kw in title_lower for kw in _SENIOR_KEYWORDS)
