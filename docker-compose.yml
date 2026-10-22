@@ -1,22 +1,26 @@
 services:
-  harvey:
+  dashboard:
     build: .
+    command: [ "python", "-m", "harvey.cli", "dashboard", "--host", "0.0.0.0", "--port", "5555" ]
     env_file: .env
     ports:
       - "127.0.0.1:4070:5555"
     volumes:
-      # Persist SQLite database and logs across restarts
       - ./data:/app/data
-      # Mount config for live editing without rebuild
       - ./harvey.yaml:/app/harvey.yaml
       - ./prompts:/app/prompts:ro
       - ./skills:/app/skills
-      # Optional: Uncomment below only if using Claude Code subscription instead of Cloud API
-      # - ~/.claude:/home/harvey/.claude
     restart: unless-stopped
     init: true
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "10m"
-        max-file: "3"
+
+  runner:
+    build: .
+    command: [ "python", "-m", "harvey.main" ]
+    env_file: .env
+    volumes:
+      - ./data:/app/data
+      - ./harvey.yaml:/app/harvey.yaml
+      - ./prompts:/app/prompts:ro
+      - ./skills:/app/skills
+    restart: unless-stopped
+    init: true
