@@ -483,7 +483,22 @@ class StateManager:
 
             for target, script in enumerate(MIGRATIONS, start=1):
                 if version < target:
-                    await db.executescript(script)
+                    try:
+                        await db.executescript(script)
+                    except Exception as e:
+                        if "duplicate column name" in str(e).lower():
+                            for statement in script.split(";"):
+                                stmt = statement.strip()
+                                if not stmt:
+                                    continue
+                                try:
+                                    await db.execute(stmt)
+                                except Exception as inner:
+                                    if "duplicate column name" in str(inner).lower():
+                                        continue
+                                    raise
+                        else:
+                            raise
                     await db.execute(f"PRAGMA user_version = {target}")
                     await db.commit()
 

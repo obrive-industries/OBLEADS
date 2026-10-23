@@ -357,10 +357,19 @@ def _needs_setup() -> bool:
     from harvey.paths import PROJECT_ROOT
     from harvey.config import _find_config_file, ConfigFileNotFoundError
 
+    import os
     env_file = PROJECT_ROOT / ".env"
 
-    # If .env doesn't exist, definitely needs setup
-    if not env_file.exists():
+    # If .env doesn't exist on disk, check if credentials were injected via environment variables
+    # (e.g. in Docker via env_file or systemd environment)
+    has_env = env_file.exists() or any(
+        os.getenv(k) for k in (
+            "OPENROUTER_API_KEY", "GEMINI_API_KEY", "GROQ_API_KEY",
+            "SMTP_HOST", "GMAIL_CLIENT_ID", "INSTANTLY_API_KEY",
+            "ANTHROPIC_API_KEY"
+        )
+    )
+    if not has_env:
         return True
 
     # harvey.local.yaml wins over the tracked harvey.yaml template, same
